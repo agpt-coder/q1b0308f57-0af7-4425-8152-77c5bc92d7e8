@@ -1,0 +1,147 @@
+// datasource db defines the database connection settings.
+// It is configured for PostgreSQL and uses an environment variable for the connection URL.
+// The 'extensions' feature enables the use of PostgreSQL-specific data types.
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+}
+
+// generator db configures Prisma Client settings.
+// It is set up to use Prisma Client Python with asyncio interface and specific features.
+generator db {
+  provider                    = "prisma-client-py"
+  interface                   = "asyncio"
+  recursive_type_depth        = 5
+  previewFeatures             = ["postgresqlExtensions"]
+  enable_experimental_decimal =true
+}
+
+model ModuleAccess {
+  id         String     @id @default(dbgenerated("gen_random_uuid()"))
+  moduleName ModuleName
+  role       Role
+  createdAt  DateTime   @default(now())
+}
+
+model User {
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()"))
+  email                   String                    @unique
+  password                String
+  role                    Role                      @default(BASIC)
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  APISessions             APISession[]
+  APIKeys                 APIKey[]
+  UserPreferences         UserPreference[]
+  QRCodeRequest           QRCodeRequest[]
+  CurrencyExchangeRequest CurrencyExchangeRequest[]
+  GeolocationRequest      GeolocationRequest[]
+  ImageProcessingRequest  ImageProcessingRequest[]
+  AuditLog                AuditLog[]
+}
+
+model UserPreference {
+  id              String   @id @default(dbgenerated("gen_random_uuid()"))
+  userId          String
+  User            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  preferenceKey   String
+  preferenceValue String
+}
+
+model APIKey {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  key       String   @unique
+  userId    String
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  active    Boolean  @default(true)
+}
+
+model APISession {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  userId    String
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+}
+
+model QRCodeRequest {
+  id              String              @id @default(dbgenerated("gen_random_uuid()"))
+  userId          String
+  User            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime            @default(now())
+  data            String
+  customization   QRCodeCustomization @relation(fields: [customizationId], references: [id])
+  customizationId String
+}
+
+model QRCodeCustomization {
+  id            String          @id @default(dbgenerated("gen_random_uuid()"))
+  size          Int
+  color         String
+  format        QRCodeFormat
+  createdAt     DateTime        @default(now())
+  QRCodeRequest QRCodeRequest[]
+}
+
+model CurrencyExchangeRequest {
+  id           String   @id @default(dbgenerated("gen_random_uuid()"))
+  userId       String
+  User         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  fromCurrency String
+  toCurrency   String
+}
+
+model GeolocationRequest {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  userId    String
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  ipAddress String
+}
+
+model ImageProcessingRequest {
+  id         String      @id @default(dbgenerated("gen_random_uuid()"))
+  userId     String
+  User       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  imageUrl   String
+  action     ImageAction
+  parameters String // JSON encoded string
+}
+
+model AuditLog {
+  id        String   @id @default(dbgenerated("gen_random_uuid()"))
+  userId    String?
+  User      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  createdAt DateTime @default(now())
+  details   String?
+}
+
+enum Role {
+  BASIC
+  ADMIN
+  PREMIUM
+}
+
+enum ModuleName {
+  QRCODEMODULE
+  CURRENCYEXCHANGEMODULE
+  GEOLOCATIONMODULE
+  IMAGEPROCESSINGMODULE
+}
+
+enum QRCodeFormat {
+  PNG
+  SVG
+}
+
+enum ImageAction {
+  RESIZE
+  COMPRESS
+}
+
